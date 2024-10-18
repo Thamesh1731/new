@@ -118,13 +118,4 @@ if choice == "Login":
                     if new_note:
                         try:
                             notify_time_dt = datetime.strptime(notify_time, '%Y-%m-%d %H:%M')
-                            conn.execute(text("INSERT INTO notes (user_id, note, notify_time) VALUES (:user_id, :note, :notify_time)"), 
-                                         {"user_id": user[0], "note": new_note, 
-                                          "notify_time": notify_time_dt.strftime('%Y-%m-%d %H:%M')})
-                            st.success("Note saved successfully!")
-                        except ValueError:
-                            st.error("Invalid date format.")
-                    else:
-                        st.error("Note cannot be empty.")
-            else:
-                st.error("Invalid email or password.")
+                            conn.execute
