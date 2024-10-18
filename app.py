@@ -78,11 +78,12 @@ if choice == "Register":
         try:
             validate_email(email)
             with engine.connect() as conn:
-                existing_user = conn.execute(text("SELECT * FROM users WHERE email = ?"), (email,)).fetchone()
+                existing_user = conn.execute(text("SELECT * FROM users WHERE email = :email"), {"email": email}).fetchone()
                 if existing_user:
                     st.error("This email is already registered.")
                 else:
-                    conn.execute(text("INSERT INTO users (email, password) VALUES (?, ?)"), (email, password))
+                    conn.execute(text("INSERT INTO users (email, password) VALUES (:email, :password)"), 
+                                 {"email": email, "password": password})
                     st.success("You have successfully registered!")
         except EmailNotValidError:
             st.error("Invalid email format.")
@@ -96,13 +97,15 @@ if choice == "Login":
 
     if st.button("Login"):
         with engine.connect() as conn:
-            user = conn.execute(text("SELECT * FROM users WHERE email = ? AND password = ?"), (email, password)).fetchone()
+            user = conn.execute(text("SELECT * FROM users WHERE email = :email AND password = :password"), 
+                                {"email": email, "password": password}).fetchone()
             if user:
                 st.success("Logged in successfully!")
                 
                 # Notes section
                 st.subheader("Your Notes")
-                notes = conn.execute(text("SELECT * FROM notes WHERE user_id = ?"), (user[0],)).fetchall()
+                notes = conn.execute(text("SELECT * FROM notes WHERE user_id = :user_id"), 
+                                     {"user_id": user[0]}).fetchall()
                 if notes:
                     for note in notes:
                         st.write(note[2])  # Display the note
@@ -114,7 +117,9 @@ if choice == "Login":
                     if new_note:
                         try:
                             notify_time_dt = datetime.strptime(notify_time, '%Y-%m-%d %H:%M')
-                            conn.execute(text("INSERT INTO notes (user_id, note, notify_time) VALUES (?, ?, ?)"), (user[0], new_note, notify_time_dt.strftime('%Y-%m-%d %H:%M')))
+                            conn.execute(text("INSERT INTO notes (user_id, note, notify_time) VALUES (:user_id, :note, :notify_time)"), 
+                                         {"user_id": user[0], "note": new_note, 
+                                          "notify_time": notify_time_dt.strftime('%Y-%m-%d %H:%M')})
                             st.success("Note saved successfully!")
                         except ValueError:
                             st.error("Invalid date format.")
