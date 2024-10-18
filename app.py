@@ -2,12 +2,12 @@ import streamlit as st
 import sqlite3
 from datetime import datetime, timedelta
 import bcrypt
-import threading
-import time
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import pytz  # Importing pytz for timezone handling
+import schedule
+import time
+import threading
 
 # Database setup
 conn = sqlite3.connect('notes_app.db')
@@ -54,19 +54,16 @@ def send_email(subject, body, recipient_email):
         server.login(sender_email, sender_password)
         server.send_message(msg)
 
-def notify():
-    ist = pytz.timezone('Asia/Kolkata')  # Set timezone to IST
-    while True:
-        now = datetime.now(ist).strftime("%Y-%m-%d %I:%M:%S %p")  # Current time in IST
-        c.execute('SELECT * FROM notes')
-        notes = c.fetchall()
-        for note in notes:
-            if note[3] == now:  # Check if current time matches notify time
-                send_email("Note Reminder", f"Reminder for your note: {note[2]}", st.session_state.user[1])  # Send email to the user
-        time.sleep(60)  # Check every minute
+def notify(note, recipient_email):
+    send_email("Note Reminder", f"Reminder for your note: {note[2]}", recipient_email)
 
-# Start the notification service in a separate thread
-threading.Thread(target=notify, daemon=True).start()
+def schedule_notifications():
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+# Start the scheduling thread
+threading.Thread(target=schedule_notifications, daemon=True).start()
 
 # Streamlit UI
 st.title("Note-Taking App")
@@ -113,16 +110,16 @@ if st.session_state.user:
 
     if st.button("Save Note"):
         user_id = st.session_state.user[0]
-        # Combine date and time and set timezone to IST
-        notify_datetime = datetime.combine(notify_date, notify_time).astimezone(ist).strftime("%Y-%m-%d %I:%M:%S %p")
+        notify_datetime = datetime.combine(notify_date, notify_time).strftime("%Y-%m-%d %H:%M:%S")  # Combine date and time
         save_note(user_id, note, notify_datetime)
-        st.success("Note saved successfully")
+        # Schedule the notification
+        schedule_time = datetime.strptime(notify_datetime, "%Y-%m-%d %H:%M:%S")
+        schedule.every().day.at(schedule_time.strftime("%H:%M")).do(notify, (user_id, note, st.session_state.user[1]))
+        st.success("Note saved successfully and notification scheduled.")
 
     st.subheader("Your Notes")
     notes = get_notes(st.session_state.user[0])
     for n in notes:
-        # Convert to IST for display
-        notify_time_display = datetime.strptime(n[3], "%Y-%m-%d %I:%M:%S %p").astimezone(ist).strftime("%I:%M %p IST")
-        st.write(f"{n[2]} - Notify at {notify_time_display}")  # Display note and notification time
+        st.write(f"{n[2]} - Notify at {n[3]}")  # Display note and notification time
 else:
     st.warning("Please log in to save notes.")
