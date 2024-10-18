@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
-import sqlite3
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from email_validator import validate_email, EmailNotValidError
 import smtplib
 from email.mime.text import MIMEText
@@ -18,14 +17,14 @@ engine = create_engine('sqlite:///notes_app.db')
 
 def create_tables():
     with engine.connect() as conn:
-        conn.execute("""
+        conn.execute(text("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT UNIQUE,
             password TEXT
         )
-        """)
-        conn.execute("""
+        """))
+        conn.execute(text("""
         CREATE TABLE IF NOT EXISTS notes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
@@ -33,7 +32,7 @@ def create_tables():
             notify_time TEXT,
             FOREIGN KEY(user_id) REFERENCES users(id)
         )
-        """)
+        """))
 
 create_tables()
 
@@ -56,10 +55,10 @@ def notify_users():
             for _, row in notes_df.iterrows():
                 notify_time = datetime.strptime(row['notify_time'], '%Y-%m-%d %H:%M')
                 if now >= notify_time:
-                    user_email = conn.execute(f"SELECT email FROM users WHERE id = {row['user_id']}").fetchone()[0]
+                    user_email = conn.execute(text(f"SELECT email FROM users WHERE id = {row['user_id']}")).fetchone()[0]
                     threading.Thread(target=send_email, args=(user_email, row['note'], row['notify_time'])).start()
                     # Delete the note after notifying
-                    conn.execute(f"DELETE FROM notes WHERE id = {row['id']}")
+                    conn.execute(text(f"DELETE FROM notes WHERE id = {row['id']}"))
         time.sleep(60)  # Check every minute
 
 threading.Thread(target=notify_users, daemon=True).start()
@@ -79,7 +78,7 @@ if choice == "Register":
         try:
             validate_email(email)
             with engine.connect() as conn:
-                conn.execute("INSERT INTO users (email, password) VALUES (?, ?)", (email, password))
+                conn.execute(text("INSERT INTO users (email, password) VALUES (?, ?)"), (email, password))
                 st.success("You have successfully registered!")
         except EmailNotValidError as e:
             st.error(str(e))
@@ -93,13 +92,13 @@ if choice == "Login":
 
     if st.button("Login"):
         with engine.connect() as conn:
-            user = conn.execute("SELECT * FROM users WHERE email = ? AND password = ?", (email, password)).fetchone()
+            user = conn.execute(text("SELECT * FROM users WHERE email = ? AND password = ?"), (email, password)).fetchone()
             if user:
                 st.success("Logged in successfully!")
                 
                 # Notes section
                 st.subheader("Your Notes")
-                notes = conn.execute("SELECT * FROM notes WHERE user_id = ?", (user[0],)).fetchall()
+                notes = conn.execute(text("SELECT * FROM notes WHERE user_id = ?"), (user[0],)).fetchall()
                 if notes:
                     for note in notes:
                         st.write(note[2])  # Display the note
@@ -111,7 +110,7 @@ if choice == "Login":
                     if new_note:
                         try:
                             notify_time_dt = datetime.strptime(notify_time, '%Y-%m-%d %H:%M')
-                            conn.execute("INSERT INTO notes (user_id, note, notify_time) VALUES (?, ?, ?)", (user[0], new_note, notify_time_dt.strftime('%Y-%m-%d %H:%M')))
+                            conn.execute(text("INSERT INTO notes (user_id, note, notify_time) VALUES (?, ?, ?)"), (user[0], new_note, notify_time_dt.strftime('%Y-%m-%d %H:%M')))
                             st.success("Note saved successfully!")
                         except ValueError:
                             st.error("Invalid date format.")
