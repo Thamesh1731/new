@@ -84,10 +84,10 @@ if choice == "Register":
                 else:
                     conn.execute(text("INSERT INTO users (email, password) VALUES (?, ?)"), (email, password))
                     st.success("You have successfully registered!")
-        except EmailNotValidError as e:
-            st.error(str(e))
+        except EmailNotValidError:
+            st.error("Invalid email format.")
         except Exception as e:
-            st.error("An error occurred during registration.")
+            st.error(f"An error occurred during registration: {str(e)}")  # Show specific error message
 
 if choice == "Login":
     st.subheader("Login to Your Account")
