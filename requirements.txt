@@ -2,3 +2,4 @@ streamlit
 sqlalchemy
 email-validator
 pandas
+bcrypt
