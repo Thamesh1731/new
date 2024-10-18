@@ -4,6 +4,9 @@ from datetime import datetime
 import bcrypt
 import threading
 import time
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # Database setup
 conn = sqlite3.connect('notes_app.db')
@@ -34,15 +37,30 @@ def get_notes(user_id):
     c.execute('SELECT * FROM notes WHERE user_id=?', (user_id,))
     return c.fetchall()
 
+def send_email(subject, body, recipient_email):
+    sender_email = "dsproject490@gmail.com"  # Replace with your email
+    sender_password = "eyyb zkyv jptu nlip"  # Replace with your password
+
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = recipient_email
+    msg['Subject'] = subject
+
+    msg.attach(MIMEText(body, 'plain'))
+
+    with smtplib.SMTP('smtp.gmail.com', 587) as server:
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.send_message(msg)
+
 def notify():
     while True:
-        now = datetime.now().strftime("%H:%M:%S")
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         c.execute('SELECT * FROM notes')
         notes = c.fetchall()
         for note in notes:
-            if note[3] == now:
-                # Notify logic: For example, you could send an email here
-                print(f"Notification: {note[2]} - Time: {note[3]}")
+            if note[3] == now:  # Check if current time matches notify time
+                send_email("Note Reminder", f"Reminder for your note: {note[2]}", st.session_state.user[1])  # Send email to the user
         time.sleep(60)  # Check every minute
 
 # Start the notification service in a separate thread
@@ -88,17 +106,18 @@ elif choice == "Login":
 if st.session_state.user:
     st.subheader("Save a Note")
     note = st.text_area("Note")
-    notify_time = st.time_input("Set Notify Time", datetime.now())
+    notify_date = st.date_input("Set Notify Date", datetime.now())
+    notify_time = st.time_input("Set Notify Time", datetime.now().time())
 
     if st.button("Save Note"):
         user_id = st.session_state.user[0]
-        notify_time_str = notify_time.strftime("%H:%M:%S")
-        save_note(user_id, note, notify_time_str)
+        notify_datetime = datetime.combine(notify_date, notify_time).strftime("%Y-%m-%d %H:%M:%S")  # Combine date and time
+        save_note(user_id, note, notify_datetime)
         st.success("Note saved successfully")
 
     st.subheader("Your Notes")
     notes = get_notes(st.session_state.user[0])
     for n in notes:
-        st.write(f"{n[2]} - Notify at {n[3]}")  # Changed to show the correct note text
+        st.write(f"{n[2]} - Notify at {n[3]}")  # Display note and notification time
 else:
     st.warning("Please log in to save notes.")
