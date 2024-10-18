@@ -1,6 +1,6 @@
 import streamlit as st
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 import bcrypt
 import threading
 import time
@@ -55,7 +55,7 @@ def send_email(subject, body, recipient_email):
 
 def notify():
     while True:
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")  # Get current time in 12-hour format
         c.execute('SELECT * FROM notes')
         notes = c.fetchall()
         for note in notes:
@@ -111,13 +111,14 @@ if st.session_state.user:
 
     if st.button("Save Note"):
         user_id = st.session_state.user[0]
-        notify_datetime = datetime.combine(notify_date, notify_time).strftime("%Y-%m-%d %H:%M:%S")  # Combine date and time
+        notify_datetime = datetime.combine(notify_date, notify_time).strftime("%Y-%m-%d %I:%M:%S %p")  # Combine date and time in 12-hour format
         save_note(user_id, note, notify_datetime)
         st.success("Note saved successfully")
 
     st.subheader("Your Notes")
     notes = get_notes(st.session_state.user[0])
     for n in notes:
+        # Display the note and notification time
         st.write(f"{n[2]} - Notify at {n[3]}")  # Display note and notification time
 else:
     st.warning("Please log in to save notes.")
