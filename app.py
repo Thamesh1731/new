@@ -85,7 +85,7 @@ if choice == "Register":
                 else:
                     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())  # Hash password
                     conn.execute(text("INSERT INTO users (email, password) VALUES (:email, :password)"), 
-                                 {"email": email, "password": hashed_password})
+                                 {"email": email, "password": hashed_password.decode('utf-8')})  # Store as string
                     st.success("You have successfully registered!")
         except EmailNotValidError:
             st.error("Invalid email format.")
@@ -100,31 +100,36 @@ if choice == "Login":
     if st.button("Login"):
         with engine.connect() as conn:
             user = conn.execute(text("SELECT * FROM users WHERE email = :email"), {"email": email}).fetchone()
-            if user and bcrypt.checkpw(password.encode('utf-8'), user[2].encode('utf-8')):  # Check password
-                st.success("Logged in successfully!")
-                
-                # Notes section
-                st.subheader("Your Notes")
-                notes = conn.execute(text("SELECT * FROM notes WHERE user_id = :user_id"), 
-                                     {"user_id": user[0]}).fetchall()
-                if notes:
-                    for note in notes:
-                        st.write(note[2])  # Display the note
+            if user:
+                # Print debug information
+                st.write(f"Debug: User found - Email: {user[1]}, Hashed Password: {user[2]}")  # Check if user exists
+                if bcrypt.checkpw(password.encode('utf-8'), user[2].encode('utf-8')):  # Check password
+                    st.success("Logged in successfully!")
+                    
+                    # Notes section
+                    st.subheader("Your Notes")
+                    notes = conn.execute(text("SELECT * FROM notes WHERE user_id = :user_id"), 
+                                         {"user_id": user[0]}).fetchall()
+                    if notes:
+                        for note in notes:
+                            st.write(note[2])  # Display the note
 
-                new_note = st.text_area("New Note")
-                notify_time = st.text_input("Set Reminder Time (YYYY-MM-DD HH:MM)", "")
-                
-                if st.button("Save Note"):
-                    if new_note:
-                        try:
-                            notify_time_dt = datetime.strptime(notify_time, '%Y-%m-%d %H:%M')
-                            conn.execute(text("INSERT INTO notes (user_id, note, notify_time) VALUES (:user_id, :note, :notify_time)"), 
-                                         {"user_id": user[0], "note": new_note, 
-                                          "notify_time": notify_time_dt.strftime('%Y-%m-%d %H:%M')})
-                            st.success("Note saved successfully!")
-                        except ValueError:
-                            st.error("Invalid date format.")
-                    else:
-                        st.error("Note cannot be empty.")
+                    new_note = st.text_area("New Note")
+                    notify_time = st.text_input("Set Reminder Time (YYYY-MM-DD HH:MM)", "")
+                    
+                    if st.button("Save Note"):
+                        if new_note:
+                            try:
+                                notify_time_dt = datetime.strptime(notify_time, '%Y-%m-%d %H:%M')
+                                conn.execute(text("INSERT INTO notes (user_id, note, notify_time) VALUES (:user_id, :note, :notify_time)"), 
+                                             {"user_id": user[0], "note": new_note, 
+                                              "notify_time": notify_time_dt.strftime('%Y-%m-%d %H:%M')})
+                                st.success("Note saved successfully!")
+                            except ValueError:
+                                st.error("Invalid date format.")
+                        else:
+                            st.error("Note cannot be empty.")
+                else:
+                    st.error("Invalid email or password.")
             else:
                 st.error("Invalid email or password.")
