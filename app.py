@@ -78,13 +78,17 @@ if choice == "Register":
         try:
             validate_email(email)
             with engine.connect() as conn:
-                conn.execute(text("INSERT INTO users (email, password) VALUES (?, ?)"), (email, password))
-                st.success("You have successfully registered!")
+                existing_user = conn.execute(text("SELECT * FROM users WHERE email = ?"), (email,)).fetchone()
+                if existing_user:
+                    st.error("This email is already registered.")
+                else:
+                    conn.execute(text("INSERT INTO users (email, password) VALUES (?, ?)"), (email, password))
+                    st.success("You have successfully registered!")
         except EmailNotValidError as e:
             st.error(str(e))
         except Exception as e:
-            st.error("This email already exists or another error occurred.")
-            
+            st.error("An error occurred during registration.")
+
 if choice == "Login":
     st.subheader("Login to Your Account")
     email = st.text_input("Email")
