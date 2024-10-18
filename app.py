@@ -1,7 +1,6 @@
 import streamlit as st
 import sqlite3
-import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 import bcrypt
 import threading
 import time
@@ -52,6 +51,10 @@ threading.Thread(target=notify, daemon=True).start()
 # Streamlit UI
 st.title("Note-Taking App")
 
+# Initialize session state
+if 'user' not in st.session_state:
+    st.session_state.user = None
+
 menu = ["Login", "Register"]
 choice = st.sidebar.selectbox("Menu", menu)
 
@@ -76,21 +79,26 @@ elif choice == "Login":
     if st.button("Login"):
         user = login(username, password)
         if user:
+            st.session_state.user = user  # Store user in session state
             st.success(f"Logged in as {username}")
-
-            st.subheader("Save a Note")
-            note = st.text_area("Note")
-            notify_time = st.time_input("Set Notify Time", datetime.now())
-
-            if st.button("Save Note"):
-                user_id = user[0]
-                notify_time_str = notify_time.strftime("%H:%M:%S")
-                save_note(user_id, note, notify_time_str)
-                st.success("Note saved successfully")
-
-            st.subheader("Your Notes")
-            notes = get_notes(user[0])
-            for n in notes:
-                st.write(f"{n[1]} - Notify at {n[3]}")
         else:
             st.warning("Incorrect Username/Password")
+
+# If the user is logged in, show the notes interface
+if st.session_state.user:
+    st.subheader("Save a Note")
+    note = st.text_area("Note")
+    notify_time = st.time_input("Set Notify Time", datetime.now())
+
+    if st.button("Save Note"):
+        user_id = st.session_state.user[0]
+        notify_time_str = notify_time.strftime("%H:%M:%S")
+        save_note(user_id, note, notify_time_str)
+        st.success("Note saved successfully")
+
+    st.subheader("Your Notes")
+    notes = get_notes(st.session_state.user[0])
+    for n in notes:
+        st.write(f"{n[2]} - Notify at {n[3]}")  # Changed to show the correct note text
+else:
+    st.warning("Please log in to save notes.")
