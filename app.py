@@ -7,6 +7,7 @@ from email.mime.text import MIMEText
 from datetime import datetime
 import threading
 import time
+import bcrypt  # Import bcrypt for password hashing
 
 # Email configuration
 EMAIL = "dsproject490@gmail.com"
@@ -82,8 +83,9 @@ if choice == "Register":
                 if existing_user:
                     st.error("This email is already registered.")
                 else:
+                    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
                     conn.execute(text("INSERT INTO users (email, password) VALUES (:email, :password)"), 
-                                 {"email": email, "password": password})
+                                 {"email": email, "password": hashed_password})
                     st.success("You have successfully registered!")
         except EmailNotValidError:
             st.error("Invalid email format.")
@@ -97,9 +99,8 @@ if choice == "Login":
 
     if st.button("Login"):
         with engine.connect() as conn:
-            user = conn.execute(text("SELECT * FROM users WHERE email = :email AND password = :password"), 
-                                {"email": email, "password": password}).fetchone()
-            if user:
+            user = conn.execute(text("SELECT * FROM users WHERE email = :email"), {"email": email}).fetchone()
+            if user and bcrypt.checkpw(password.encode('utf-8'), user[2].encode('utf-8')):
                 st.success("Logged in successfully!")
                 
                 # Notes section
