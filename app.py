@@ -7,7 +7,7 @@ from email.mime.text import MIMEText
 from datetime import datetime
 import threading
 import time
-import bcrypt  # Import bcrypt for password hashing
+import bcrypt  # For password hashing
 
 # Email configuration
 EMAIL = "dsproject490@gmail.com"
@@ -77,20 +77,20 @@ if choice == "Register":
     
     if st.button("Register"):
         try:
-            validate_email(email)
+            validate_email(email)  # Validate email format
             with engine.connect() as conn:
                 existing_user = conn.execute(text("SELECT * FROM users WHERE email = :email"), {"email": email}).fetchone()
                 if existing_user:
                     st.error("This email is already registered.")
                 else:
-                    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+                    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())  # Hash password
                     conn.execute(text("INSERT INTO users (email, password) VALUES (:email, :password)"), 
                                  {"email": email, "password": hashed_password})
                     st.success("You have successfully registered!")
         except EmailNotValidError:
             st.error("Invalid email format.")
         except Exception as e:
-            st.error(f"An error occurred during registration: {str(e)}")  # Show specific error message
+            st.error(f"An error occurred during registration: {str(e)}")
 
 if choice == "Login":
     st.subheader("Login to Your Account")
@@ -100,7 +100,7 @@ if choice == "Login":
     if st.button("Login"):
         with engine.connect() as conn:
             user = conn.execute(text("SELECT * FROM users WHERE email = :email"), {"email": email}).fetchone()
-            if user and bcrypt.checkpw(password.encode('utf-8'), user[2].encode('utf-8')):
+            if user and bcrypt.checkpw(password.encode('utf-8'), user[2].encode('utf-8')):  # Check password
                 st.success("Logged in successfully!")
                 
                 # Notes section
@@ -128,4 +128,3 @@ if choice == "Login":
                         st.error("Note cannot be empty.")
             else:
                 st.error("Invalid email or password.")
-
