@@ -7,6 +7,7 @@ import time
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import pytz  # Importing pytz for timezone handling
 
 # Database setup
 conn = sqlite3.connect('notes_app.db')
@@ -54,8 +55,9 @@ def send_email(subject, body, recipient_email):
         server.send_message(msg)
 
 def notify():
+    ist = pytz.timezone('Asia/Kolkata')  # Set timezone to IST
     while True:
-        now = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")  # Get current time in 12-hour format
+        now = datetime.now(ist).strftime("%Y-%m-%d %I:%M:%S %p")  # Current time in IST
         c.execute('SELECT * FROM notes')
         notes = c.fetchall()
         for note in notes:
@@ -106,19 +108,21 @@ elif choice == "Login":
 if st.session_state.user:
     st.subheader("Save a Note")
     note = st.text_area("Note")
-    notify_date = st.date_input("Set Notify Date", datetime.now())
+    notify_date = st.date_input("Set Notify Date", datetime.now().date())
     notify_time = st.time_input("Set Notify Time", datetime.now().time())
 
     if st.button("Save Note"):
         user_id = st.session_state.user[0]
-        notify_datetime = datetime.combine(notify_date, notify_time).strftime("%Y-%m-%d %I:%M:%S %p")  # Combine date and time in 12-hour format
+        # Combine date and time and set timezone to IST
+        notify_datetime = datetime.combine(notify_date, notify_time).astimezone(ist).strftime("%Y-%m-%d %I:%M:%S %p")
         save_note(user_id, note, notify_datetime)
         st.success("Note saved successfully")
 
     st.subheader("Your Notes")
     notes = get_notes(st.session_state.user[0])
     for n in notes:
-        # Display the note and notification time
-        st.write(f"{n[2]} - Notify at {n[3]}")  # Display note and notification time
+        # Convert to IST for display
+        notify_time_display = datetime.strptime(n[3], "%Y-%m-%d %I:%M:%S %p").astimezone(ist).strftime("%I:%M %p IST")
+        st.write(f"{n[2]} - Notify at {notify_time_display}")  # Display note and notification time
 else:
     st.warning("Please log in to save notes.")
